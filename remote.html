@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>FriendsZone TV - Controle Remoto</title>
+  <!-- PeerJS WebRTC Library -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --border: rgba(255, 255, 255, 0.12);
+      --accent: #2563eb;
+      --accent-glow: rgba(37, 99, 235, 0.5);
+      --accent-vivid: #38bdf8;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --danger: #ef4444;
+      --success: #22c55e;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      padding-bottom: env(safe-area-inset-bottom, 20px);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Top Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-icon {
+      font-size: 24px;
+    }
+
+    .brand-info h1 {
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .brand-info p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 20px;
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .status-badge.connected {
+      background: rgba(34, 197, 94, 0.15);
+      color: var(--success);
+      border-color: rgba(34, 197, 94, 0.3);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* Connection Card (If not paired yet) */
+    #card-pair {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .pair-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .pair-input-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .pair-input {
+      flex: 1;
+      height: 48px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0 14px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      text-transform: uppercase;
+      text-align: center;
+      letter-spacing: 2px;
+    }
+
+    .pair-btn {
+      padding: 0 20px;
+      height: 48px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* Text Input Section (Real-Time Typing) */
+    .section-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent-vivid);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .typing-box {
+      display: flex;
+      gap: 8px;
+    }
+
+    .input-text {
+      flex: 1;
+      height: 48px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0 14px;
+      color: #fff;
+      font-size: 16px;
+      outline: none;
+      user-select: text;
+    }
+
+    .input-text:focus {
+      border-color: var(--accent-vivid);
+    }
+
+    .btn-send {
+      height: 48px;
+      padding: 0 16px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-backspace {
+      height: 48px;
+      padding: 0 14px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #cbd5e1;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    /* Navigation D-Pad */
+    .dpad-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 0;
+    }
+
+    .dpad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 76px);
+      grid-template-rows: repeat(3, 76px);
+      gap: 10px;
+    }
+
+    .btn-dpad {
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #fff;
+      border-radius: 16px;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.1s ease;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn-dpad:active {
+      transform: scale(0.92);
+      background: var(--accent);
+      border-color: #fff;
+    }
+
+    .btn-dpad-ok {
+      background: var(--accent);
+      border-color: rgba(255, 255, 255, 0.3);
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 15px var(--accent-glow);
+    }
+
+    .btn-dpad-ok:active {
+      background: var(--accent-vivid);
+      transform: scale(0.92);
+    }
+
+    /* Action Buttons Row */
+    .action-row {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      width: 100%;
+    }
+
+    .btn-action {
+      flex: 1;
+      height: 48px;
+      background: #1e293b;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.1s ease;
+    }
+
+    .btn-action:active {
+      transform: scale(0.94);
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Media Playback Controls */
+    .media-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .btn-media {
+      height: 50px;
+      background: #1e293b;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.1s ease;
+    }
+
+    .btn-media:active {
+      transform: scale(0.92);
+      background: var(--accent);
+    }
+
+    /* App Quick Navigation Tabs */
+    .tabs-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    .btn-tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      height: 58px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: #cbd5e1;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.1s ease;
+    }
+
+    .btn-tab span:first-child {
+      font-size: 18px;
+    }
+
+    .btn-tab:active {
+      background: var(--accent);
+      color: #fff;
+      transform: scale(0.94);
+    }
+
+    /* Toast Notification */
+    #mobile-toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 700;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+      opacity: 0;
+      transition: all 0.25s ease;
+      z-index: 999;
+    }
+
+    #mobile-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div id="mobile-toast"></div>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="brand">
+        <span class="brand-icon">📺</span>
+        <div class="brand-info">
+          <h1>FriendsZone TV</h1>
+          <p id="room-subtitle">Controle Remoto P2P</p>
+        </div>
+      </div>
+      <div id="status-badge" class="status-badge">
+        <span class="status-dot"></span>
+        <span id="status-label">Desconectado</span>
+      </div>
+    </header>
+
+    <!-- Manual Room Pin Card (Shows if not paired) -->
+    <div id="card-pair" style="display: none;">
+      <span class="pair-title">Conectar à TV</span>
+      <div class="pair-input-group">
+        <input type="text" id="input-pin" class="pair-input" placeholder="CÓDIGO DA TV" maxlength="10">
+        <button class="pair-btn" onclick="Remote.connectManual()">Conectar</button>
+      </div>
+    </div>
+
+    <!-- 1. Text & Typing Bar -->
+    <div class="section-card">
+      <div class="section-header">
+        <span>⌨️ Digitar na TV</span>
+        <span id="typing-status" style="font-size: 11px; color: var(--text-muted);">Pronto</span>
+      </div>
+      <div class="typing-box">
+        <input 
+          type="text" 
+          id="input-text-send" 
+          class="input-text" 
+          placeholder="Digite logins, senhas ou buscas..." 
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+        >
+        <button class="btn-send" onclick="Remote.sendTypedText()">Enviar</button>
+        <button class="btn-backspace" onclick="Remote.sendKey('Backspace')" title="Apagar">⌫</button>
+      </div>
+    </div>
+
+    <!-- 2. Navigation D-Pad -->
+    <div class="section-card">
+      <div class="section-header">
+        <span>🎯 Navegação</span>
+      </div>
+      <div class="dpad-container">
+        <div class="dpad-grid">
+          <div></div>
+          <button class="btn-dpad" onclick="Remote.sendKey('ArrowUp')">▲</button>
+          <div></div>
+
+          <button class="btn-dpad" onclick="Remote.sendKey('ArrowLeft')">◀</button>
+          <button class="btn-dpad btn-dpad-ok" onclick="Remote.sendKey('Enter')">OK</button>
+          <button class="btn-dpad" onclick="Remote.sendKey('ArrowRight')">▶</button>
+
+          <div></div>
+          <button class="btn-dpad" onclick="Remote.sendKey('ArrowDown')">▼</button>
+          <div></div>
+        </div>
+
+        <div class="action-row">
+          <button class="btn-action" onclick="Remote.sendKey('Back')">
+            <span>◀</span> <span>Voltar</span>
+          </button>
+          <button class="btn-action" onclick="Remote.sendTab('home')">
+            <span>🏠</span> <span>Início</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Media Controls -->
+    <div class="section-card">
+      <div class="section-header">
+        <span>🎬 Reprodução de Vídeo</span>
+      </div>
+      <div class="media-grid">
+        <button class="btn-media" onclick="Remote.sendMedia('seek', -10)" title="-10s">-10s</button>
+        <button class="btn-media" onclick="Remote.sendMedia('toggle')" style="background: var(--accent);" title="Play / Pause">⏯</button>
+        <button class="btn-media" onclick="Remote.sendMedia('seek', 10)" title="+10s">+10s</button>
+        <button class="btn-media" onclick="Remote.sendMedia('next_ep')" title="Próximo Episódio">⏭</button>
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 4px;">
+        <button class="btn-action" onclick="Remote.sendMedia('restart')" style="font-size: 13px;">
+          <span>🔄</span> <span>Reiniciar Vídeo</span>
+        </button>
+        <button class="btn-action" onclick="Remote.sendMedia('aspect')" style="font-size: 13px;">
+          <span>⛶</span> <span>Tela Cheia</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 4. Quick App Navigation -->
+    <div class="section-card">
+      <div class="section-header">
+        <span>⚡ Atalhos Rápidos da TV</span>
+      </div>
+      <div class="tabs-grid">
+        <button class="btn-tab" onclick="Remote.sendTab('home')">
+          <span>🏠</span> <span>Início</span>
+        </button>
+        <button class="btn-tab" onclick="Remote.sendTab('live')">
+          <span>📺</span> <span>Ao Vivo</span>
+        </button>
+        <button class="btn-tab" onclick="Remote.sendTab('movies')">
+          <span>🎬</span> <span>Filmes</span>
+        </button>
+        <button class="btn-tab" onclick="Remote.sendTab('series')">
+          <span>🍿</span> <span>Séries</span>
+        </button>
+        <button class="btn-tab" onclick="Remote.sendTab('search')">
+          <span>🔍</span> <span>Busca</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const Remote = {
+      peer: null,
+      conn: null,
+      targetRoom: null,
+
+      init: function() {
+        // Obter código da sala da hash da URL (ex: remote.html#FZTV-ABCD) ou parâmetro ?room=
+        const hash = window.location.hash.replace('#', '').trim();
+        const urlParams = new URLSearchParams(window.location.search);
+        this.targetRoom = hash || urlParams.get('room');
+
+        if (this.targetRoom) {
+          document.getElementById('room-subtitle').textContent = `Conectando a: ${this.targetRoom}`;
+          this.initPeer(this.targetRoom);
+        } else {
+          document.getElementById('card-pair').style.display = 'flex';
+          document.getElementById('room-subtitle').textContent = 'Digite o código da TV';
+        }
+
+        // Listener para tecla Enter no input de texto
+        document.getElementById('input-text-send').addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            this.sendTypedText();
+          }
+        });
+      },
+
+      initPeer: function(roomId) {
+        this.updateStatus(false, 'Conectando...');
+
+        // Inicia cliente PeerJS (Gera ID de cliente móvel aleatório)
+        const myId = 'mobile-' + Math.random().toString(36).substr(2, 8);
+        this.peer = new Peer(myId, {
+          host: '0.peerjs.com',
+          port: 443,
+          path: '/',
+          secure: true,
+          config: {
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:global.stun.twilio.com:3478' }
+            ]
+          }
+        });
+
+        this.peer.on('open', (id) => {
+          console.log('[Remote] Peer aberto com ID:', id);
+          this.connectToTv(roomId);
+        });
+
+        this.peer.on('error', (err) => {
+          console.warn('[Remote Error]', err);
+          this.showToast('Erro de conexão P2P');
+          document.getElementById('card-pair').style.display = 'flex';
+          this.updateStatus(false, 'Erro ao conectar');
+        });
+      },
+
+      connectToTv: function(roomId) {
+        console.log('[Remote] Conectando à TV:', roomId);
+        this.conn = this.peer.connect(roomId, { reliable: true });
+
+        this.conn.on('open', () => {
+          console.log('[Remote] Conectado à TV com sucesso!');
+          this.updateStatus(true, 'Conectado à TV');
+          document.getElementById('card-pair').style.display = 'none';
+          document.getElementById('room-subtitle').textContent = `TV: ${roomId}`;
+          this.showToast('Conectado à TV!');
+          this.vibrate(50);
+        });
+
+        this.conn.on('data', (data) => {
+          console.log('[Remote] Dados recebidos da TV:', data);
+          if (data && data.type === 'status') {
+            if (data.activeField) {
+              document.getElementById('typing-status').textContent = `Campo na TV: ${data.activeField}`;
+            }
+          }
+        });
+
+        this.conn.on('close', () => {
+          this.updateStatus(false, 'Desconectado');
+          this.showToast('TV desconectada');
+          document.getElementById('card-pair').style.display = 'flex';
+        });
+      },
+
+      connectManual: function() {
+        const val = document.getElementById('input-pin').value.trim().toUpperCase();
+        if (!val) {
+          alert('Digite o código da TV');
+          return;
+        }
+        const fullRoom = val.startsWith('FZTV-') ? val : `FZTV-${val}`;
+        window.location.hash = fullRoom;
+        this.targetRoom = fullRoom;
+        this.initPeer(fullRoom);
+      },
+
+      sendData: function(payload) {
+        this.vibrate(25);
+        if (this.conn && this.conn.open) {
+          this.conn.send(payload);
+        } else {
+          this.showToast('Desconectado da TV');
+        }
+      },
+
+      sendKey: function(keyName) {
+        this.sendData({ type: 'key', key: keyName });
+      },
+
+      sendTypedText: function() {
+        const input = document.getElementById('input-text-send');
+        const text = input.value;
+        if (!text) return;
+        this.sendData({ type: 'text', value: text });
+        this.showToast(`Texto enviado: "${text}"`);
+        input.value = '';
+      },
+
+      sendTab: function(tabName) {
+        this.sendData({ type: 'tab', tab: tabName });
+        this.showToast(`Abrindo: ${tabName}`);
+      },
+
+      sendMedia: function(action, value = 0) {
+        this.sendData({ type: 'media', action: action, value: value });
+      },
+
+      updateStatus: function(connected, text) {
+        const badge = document.getElementById('status-badge');
+        const label = document.getElementById('status-label');
+        if (connected) {
+          badge.classList.add('connected');
+        } else {
+          badge.classList.remove('connected');
+        }
+        label.textContent = text;
+      },
+
+      vibrate: function(ms) {
+        if (navigator.vibrate) {
+          try { navigator.vibrate(ms); } catch (e) {}
+        }
+      },
+
+      showToast: function(msg) {
+        const toast = document.getElementById('mobile-toast');
+        toast.textContent = msg;
+        toast.classList.add('show');
+        clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => {
+          toast.classList.remove('show');
+        }, 1800);
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      Remote.init();
+    });
+  </script>
+</body>
+</html>
